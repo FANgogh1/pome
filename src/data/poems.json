@@ -1,0 +1,32 @@
+[
+  {
+    "id": 1,
+    "title": "静夜思",
+    "author": "李白",
+    "dynasty": "唐",
+    "content": ["床前明月光", "疑是地上霜", "举头望明月", "低头思故乡"],
+    "notes": [{ "keyword": "静夜思", "explanation": "夜晚思念家乡的情感" }],
+    "translation": "在静夜之中，月光照在床前，仿佛地上结了霜。抬头望着明月，低头思念故乡。",
+    "analysis": "诗中通过月光引发思乡之情，语言朴素，意境深远。",
+    "authorIntro": "李白，字太白，号青莲居士，唐代伟大的浪漫主义诗人。",
+    "categories": ["思乡", "唐诗"],
+    "likes": 128,
+    "favorites": 64,
+    "publishDate": "2024-01-01"
+  },
+  {
+    "id": 2,
+    "title": "江雪",
+    "author": "柳宗元",
+    "dynasty": "唐",
+    "content": ["千山鸟飞绝", "万径人踪灭", "孤舟蓑笠翁", "独钓寒江雪"],
+    "notes": [{ "keyword": "蓑笠翁", "explanation": "身着蓑衣戴斗笠的老翁" }],
+    "translation": "群山之中已无飞鸟，路径之上不见人影。唯有孤舟上的老翁，在寒冷的江面上独自垂钓。",
+    "analysis": "意境清冷孤寂，通过对比烘托孤独与坚守。",
+    "authorIntro": "柳宗元，唐代文学家、哲学家，唐宋八大家之一。",
+    "categories": ["山水", "唐诗"],
+    "likes": 96,
+    "favorites": 40,
+    "publishDate": "2024-02-10"
+  }
+]
