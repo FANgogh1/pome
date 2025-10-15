@@ -4,7 +4,7 @@ import AppFooter from './components/AppFooter.vue'
 </script>
 
 <template>
-  <div class="layout">
+  <div class="layout poem-theme">
     <NavBar />
     <main class="container">
       <router-view />
@@ -18,7 +18,8 @@ import AppFooter from './components/AppFooter.vue'
   display: grid;
   grid-template-rows: auto 1fr auto;
   min-height: 100vh;
-  background: #f5f7fa;
+  /* 背景交由全局宣纸主题 */
+  background: transparent;
 }
 .container {
   width: 100%;

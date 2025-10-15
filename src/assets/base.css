@@ -36,6 +36,18 @@
   --section-gap: 160px;
 }
 
+/* 古风主题变量（浅墨色、水松绿、绛红、金缕黄） */
+:root {
+  --poem-ink: #2c2a28;
+  --poem-ink-2: #3a3734;
+  --poem-emerald: #2f6b55;
+  --poem-crimson: #8a2a2a;
+  --poem-gold: #c7a36a;
+  --poem-paper: #f6f3ea;
+  --poem-paper-deep: #efe8d8;
+  --poem-shadow: 0 6px 18px rgba(0,0,0,0.06);
+}
+
 @media (prefers-color-scheme: dark) {
   :root {
     --color-background: var(--vt-c-black);
@@ -61,26 +73,105 @@
 body {
   min-height: 100vh;
   color: var(--color-text);
-  background: var(--color-background);
+  /* 宣纸肌理背景（纯 CSS 渐变叠加） */
+  background:
+    radial-gradient(1200px 800px at 20% 10%, rgba(0,0,0,0.03), transparent 60%),
+    radial-gradient(1000px 700px at 80% 90%, rgba(0,0,0,0.025), transparent 55%),
+    linear-gradient(0deg, rgba(0,0,0,0.015) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0,0,0,0.012) 1px, transparent 1px),
+    var(--poem-paper);
+  background-size:
+    100% 100%,
+    100% 100%,
+    100% 28px,
+    28px 100%,
+    auto;
   transition:
     color 0.5s,
     background-color 0.5s;
-  line-height: 1.6;
+  line-height: 1.7;
+  /* 中文宋体/仿宋优先，含跨平台后备 */
   font-family:
-    Inter,
-    -apple-system,
-    BlinkMacSystemFont,
-    'Segoe UI',
-    Roboto,
-    Oxygen,
-    Ubuntu,
-    Cantarell,
-    'Fira Sans',
-    'Droid Sans',
-    'Helvetica Neue',
-    sans-serif;
-  font-size: 15px;
+    "Source Han Serif SC", "Noto Serif SC", "Songti SC", "STSong",
+    "FangSong", "SimSun",
+    "Times New Roman", Georgia, serif,
+    -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  font-size: 16px;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+/* 通用古风组件样式 */
+.poem-card {
+  background: rgba(255,255,255,0.85);
+  backdrop-filter: blur(2px);
+  border: 1px solid rgba(44,42,40,0.12);
+  border-radius: 10px;
+  box-shadow: var(--poem-shadow);
+  padding: 14px 16px;
+}
+.ink-divider {
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(44,42,40,0.35), transparent);
+  margin: 12px 0;
+}
+.poem-heading {
+  position: relative;
+  font-weight: 600;
+  color: var(--poem-ink);
+  padding-left: 14px;
+}
+.poem-heading::before {
+  content: "";
+  position: absolute;
+  left: 0; top: 0.2em; bottom: 0.2em;
+  width: 6px;
+  background: linear-gradient(180deg, var(--poem-gold), transparent 90%);
+  border-radius: 2px;
+}
+
+/* 古风按钮：墨色/水松绿/绛红 */
+.poem-btn {
+  appearance: none;
+  border: 1px solid rgba(44,42,40,0.18);
+  color: #fff;
+  background: linear-gradient(180deg, #3b3a37, #2c2a28);
+  padding: 8px 14px;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: transform .08s ease, filter .2s ease, box-shadow .2s ease;
+  box-shadow: 0 2px 0 rgba(0,0,0,0.08);
+}
+.poem-btn:hover { filter: brightness(1.05); }
+.poem-btn:active { transform: translateY(1px); }
+
+.poem-btn.emerald {
+  background: linear-gradient(180deg, #377c62, var(--poem-emerald));
+  border-color: rgba(47,107,85,0.35);
+}
+.poem-btn.crimson {
+  background: linear-gradient(180deg, #a43a3a, var(--poem-crimson));
+  border-color: rgba(138,42,42,0.35);
+}
+
+/* 卷轴式小标题装饰 */
+.scroll-title {
+  display: inline-block;
+  padding: 6px 14px;
+  background: rgba(255,255,255,0.8);
+  border: 1px solid rgba(44,42,40,0.15);
+  border-radius: 6px;
+  box-shadow: 0 2px 0 rgba(0,0,0,0.05);
+}
+
+/* 细节：滚动条 */
+*::-webkit-scrollbar { width: 10px; height: 10px; }
+*::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, rgba(44,42,40,0.35), rgba(44,42,40,0.2));
+  border-radius: 8px;
+  border: 2px solid rgba(255,255,255,0.4);
+}
+*::-webkit-scrollbar-track {
+  background: transparent;
 }

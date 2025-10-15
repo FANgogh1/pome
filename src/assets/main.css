@@ -10,14 +10,15 @@
 a,
 .green {
   text-decoration: none;
-  color: hsla(160, 100%, 37%, 1);
-  transition: 0.4s;
-  padding: 3px;
+  color: var(--poem-ink);
+  transition: 0.3s;
+  padding: 3px 4px;
+  border-radius: 4px;
 }
 
 @media (hover: hover) {
   a:hover {
-    background-color: hsla(160, 100%, 37%, 0.2);
+    background-color: color-mix(in srgb, var(--poem-ink) 12%, transparent);
   }
 }
 
