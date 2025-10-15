@@ -30,7 +30,7 @@ import { useAuthStore } from '../stores/auth';
 router.beforeEach(async (to) => {
   const auth = useAuthStore();
   if (!auth.ready) await auth.init();
-  if (to.meta?.requiresAuth && !auth.isLoggedIn) {
+  if (!auth.isLoggedIn && !['login','register'].includes(to.name)) {
     return { name: 'login', query: { redirect: to.fullPath } };
   }
 });
