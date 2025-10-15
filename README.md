@@ -40,3 +40,37 @@ npm run dev
 - 丰富数据维度与分页/懒加载
 - 引入 UI 库（如 Element Plus）增强筛选与表格
 - 添加错误边界与性能监控
+
+## Vercel 部署指引
+- 构建命令（Build Command）：`npm run build`
+- 输出目录（Output Directory）：`dist`
+- 安装命令（Install Command）：`npm install` 或 `npm ci`
+
+### 环境变量
+在 Vercel 项目 Settings → Environment Variables 添加：
+- `VITE_SUPABASE_URL`：你的 Supabase 项目 URL
+- `VITE_SUPABASE_ANON_KEY`：你的 Supabase 匿名 Key
+说明：本项目通过 `import.meta.env.*` 读取变量，必须以 `VITE_` 前缀。已提供 `.env.example` 作为参考。
+
+### SPA 回退（history 路由）
+本项目使用 `createWebHistory()`，已在根目录添加 `vercel.json`：
+```json
+{
+  "rewrites": [
+    { "source": "/(.*)", "destination": "/index.html" }
+  ]
+}
+```
+作用：所有非静态文件请求回退到 `index.html`，由前端路由接管，避免子路由访问空白或 404。
+
+### 常见问题排查
+- 页面空白或 404：检查 `vercel.json` 是否存在且如上所示；确认 Vercel 的 Build/Output 设置正确。
+- 资源 404：若部署在根域名通常无需设置 `base`；如仍异常，可在 `vite.config.js` 增加 `base: '/'`。
+- 环境变量未配置：浏览器控制台可能出现 Supabase 初始化警告或错误；在 Vercel 正确添加 `VITE_*` 变量后重新部署。
+- 想避免服务器回退：可将路由改为 `createWebHashHistory()`（URL 中会包含 `#`，不建议生产使用）。
+
+### 部署步骤
+1. 推送代码到 Git 仓库（GitHub/GitLab/Bitbucket）。
+2. 在 Vercel 导入项目，设置 Build/Output。
+3. 在 Vercel 添加环境变量（参考 `.env.example`）。
+4. 触发部署并在浏览器访问 `/poems`、`/profile` 等子路由验证。
