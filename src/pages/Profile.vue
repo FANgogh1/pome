@@ -78,6 +78,7 @@
 import { ref, computed, onMounted, watch } from 'vue';
 import { usePoemsStore } from '../stores/poems';
 import { useAuthStore } from '../stores/auth';
+import { supabase } from '../lib/supabaseClient';
 
 const tab = ref('fav');
 const store = usePoemsStore();
@@ -93,7 +94,21 @@ const form = ref({
   username: '',
   website: ''
 });
-const avatarUrl = computed(() => auth.getPublicAvatarUrl(auth.profile?.avatar_url));
+const avatarUrl = ref('');
+// 异步解析头像 URL：公有桶用 publicUrl；私有桶回退为签名 URL
+async function resolveAvatarUrl(path) {
+  if (!path) { avatarUrl.value = ''; return; }
+  const { data: pub } = supabase.storage.from('avatars').getPublicUrl(path);
+  if (pub?.publicUrl) {
+    avatarUrl.value = pub.publicUrl;
+    return;
+  }
+  const { data: signed, error } = await supabase.storage.from('avatars').createSignedUrl(path, 3600);
+  avatarUrl.value = signed?.signedUrl || '';
+}
+watch(() => auth.profile?.avatar_url, (path) => {
+  resolveAvatarUrl(path);
+}, { immediate: true });
 
 onMounted(async () => {
   if (!auth.ready) await auth.init();
@@ -113,7 +128,15 @@ watch(() => auth.profile, (p) => {
 
 async function saveProfile() {
   try {
-    await auth.updateProfile(form.value);
+    const payload = {
+      full_name: (form.value.full_name || '').trim(),
+      username: (form.value.username || '').trim(),
+      website: (form.value.website || '').trim()
+    };
+    if (payload.website && !/^https?:\/\//i.test(payload.website)) {
+      payload.website = 'https://' + payload.website;
+    }
+    await auth.updateProfile(payload);
     alert('资料已更新');
   } catch (e) {
     alert(e.message || '更新失败');
@@ -124,9 +147,15 @@ async function onAvatarChange(e) {
   const file = e.target.files?.[0];
   if (!file) return;
   try {
-    await auth.uploadAvatar(file);
-  } catch (e) {
-    alert(e.message || '上传失败');
+    const path = await auth.uploadAvatar(file);
+    // 立即刷新头像显示
+    await resolveAvatarUrl(path);
+    alert('头像已上传');
+  } catch (err) {
+    alert(err.message || '上传失败');
+  } finally {
+    // 清空文件选择，允许再次选择同一文件
+    if (e.target) e.target.value = '';
   }
 }
 </script>
