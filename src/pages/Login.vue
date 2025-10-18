@@ -28,8 +28,8 @@ import { useAuthStore } from '../stores/auth';
 const router = useRouter();
 const route = useRoute();
 const auth = useAuthStore();
-const email = ref('');
-const password = ref('');
+const email = ref('465989260@qq.com');
+const password = ref('123456');
 const loading = ref(false);
 const errorMsg = ref('');
 
