@@ -15,4 +15,18 @@ export default defineConfig({
       '@': fileURLToPath(new URL('./src', import.meta.url))
     },
   },
+  server: {
+    proxy: {
+      '/workflow': {
+        target: 'http://localhost:5678',
+        changeOrigin: true
+      },
+      // 同源代理到 n8n，避免浏览器 CORS
+      '/n8n/ai-chat': {
+        target: 'https://fanan77.app.n8n.cloud',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/n8n\/ai-chat/, '/webhook/ai-chat'),
+      },
+    }
+  },
 })
