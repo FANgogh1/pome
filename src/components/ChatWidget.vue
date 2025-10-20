@@ -40,7 +40,7 @@
 
 <script setup lang="ts">
 import { ref, watch, nextTick, onMounted } from 'vue';
-import { sendToN8n, type ChatMessage } from '@/lib/n8nClient';
+import { sendToN8n, setN8nWebhookUrl, type ChatMessage } from '@/lib/n8nClient';
 
 const isOpen = ref(false);
 const input = ref('');
@@ -78,21 +78,48 @@ async function handleSend() {
   scrollToBottom();
 
   loading.value = true;
+  let controller: AbortController | null = null;
+  
   try {
-    const controller = new AbortController();
+    controller = new AbortController();
+    
+    // 设置超时
+    const timeoutId = setTimeout(() => {
+      controller?.abort();
+    }, 30000); // 30秒超时
+
     const res = await sendToN8n(
       {
         clientId,
-        messages: messages.value
+        messages: messages.value,
+        meta: {
+          model: 'deepseek-chat',
+          temperature: 0.7,
+          system: '你是一个专业的诗词鉴赏助手，擅长解释古诗词的含义、背景和艺术特色。请用简洁易懂的语言回答用户的问题。'
+        }
       },
       controller.signal
     );
-    const reply = res.reply || '（未收到应答）';
+    
+    clearTimeout(timeoutId);
+    
+    const reply = res.output || res.reply || '抱歉，我暂时无法回答这个问题。';
     messages.value.push({ role: 'assistant', content: reply, timestamp: Date.now() });
+    
   } catch (err: any) {
+    console.error('Chat error:', err);
+    
+    let errorMessage = '抱歉，发生了错误。';
+    
+    if (err.name === 'AbortError') {
+      errorMessage = '请求超时，请稍后重试。';
+    } else if (err.message) {
+      errorMessage = err.message;
+    }
+    
     messages.value.push({
       role: 'assistant',
-      content: `请求失败：${err?.message || String(err)}\n请稍后重试。`,
+      content: errorMessage,
       timestamp: Date.now()
     });
   } finally {
@@ -116,6 +143,9 @@ watch(isOpen, async (val) => {
 });
 
 onMounted(() => {
+  // 强制使用指定的 n8n Webhook URL
+  setN8nWebhookUrl('https://fanan77.app.n8n.cloud/webhook/ai-chat');
+
   // 若需要，打开时自动滚动
   if (isOpen.value) {
     scrollToBottom();

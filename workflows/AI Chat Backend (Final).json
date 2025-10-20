@@ -1,0 +1,212 @@
+{
+  "name": "AI Chat Backend (Fixed)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "ai-chat",
+        "responseMode": "responseNode",
+        "options": {
+          "binaryData": false
+        }
+      },
+      "id": "webhook-node",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "webhookId": "7c2b1d70-f971-49a6-8be5-a2dd8b52b0b6"
+    },
+    {
+      "parameters": {
+        "jsCode": "// 处理前端发送的数据\nconst inputData = $input.all();\nconst webhookData = inputData[0].json;\n\n// 提取消息内容\nconst messages = webhookData.messages || [];\nconst clientId = webhookData.clientId || 'default';\nconst meta = webhookData.meta || {};\n\n// 构建DeepSeek API格式的消息\nconst apiMessages = [];\n\n// 添加系统消息\nif (meta.system) {\n  apiMessages.push({\n    role: 'system',\n    content: meta.system\n  });\n}\n\n// 添加对话历史\nfor (const msg of messages) {\n  if (msg.role === 'user' || msg.role === 'assistant') {\n    apiMessages.push({\n      role: msg.role,\n      content: msg.content\n    });\n  }\n}\n\n// 构建API请求体\nconst apiRequest = {\n  model: meta.model || 'deepseek-chat',\n  messages: apiMessages,\n  temperature: meta.temperature || 0.7,\n  max_tokens: 2000,\n  stream: false\n};\n\nreturn {\n  json: {\n    apiRequest: apiRequest,\n    clientId: clientId,\n    originalMessages: messages,\n    meta: meta\n  }\n};"
+      },
+      "id": "process-input-node",
+      "name": "Process Input",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        200,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://api.deepseek.com/v1/chat/completions",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "deepSeekApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "model",
+              "value": "={{ $json.apiRequest.model }}"
+            },
+            {
+              "name": "messages",
+              "value": "={{ $json.apiRequest.messages }}"
+            },
+            {
+              "name": "temperature",
+              "value": "={{ $json.apiRequest.temperature }}"
+            },
+            {
+              "name": "max_tokens",
+              "value": "={{ $json.apiRequest.max_tokens }}"
+            },
+            {
+              "name": "stream",
+              "value": "={{ $json.apiRequest.stream }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "deepseek-api-node",
+      "name": "Call DeepSeek API",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        400,
+        0
+      ],
+      "credentials": {
+        "deepSeekApi": {
+          "id": "qsh9oJN5ao1DYNQa",
+          "name": "DeepSeek account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineByPosition",
+        "options": {}
+      },
+      "id": "merge-node",
+      "name": "Merge Data",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [
+        600,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// 处理合并后的数据\nconst inputData = $input.all();\nconst mergedData = inputData[0].json;\n\n// 分离API响应和原始数据\nconst apiResponse = mergedData.apiResponse || {};\nconst originalData = {\n  clientId: mergedData.clientId || 'default',\n  model: mergedData.apiRequest?.model || 'deepseek-chat',\n  apiRequest: mergedData.apiRequest || {}\n};\n\n// 检查API响应\nif (!apiResponse || !apiResponse.choices || !apiResponse.choices[0]) {\n  console.log('API响应异常:', apiResponse);\n  return {\n    json: {\n      ok: false,\n      error: 'API响应格式异常',\n      reply: '抱歉，AI服务暂时不可用，请稍后重试。',\n      clientId: originalData.clientId,\n      timestamp: Date.now(),\n      debug: {\n        apiResponse: apiResponse,\n        originalData: originalData\n      }\n    }\n  };\n}\n\n// 提取AI回复\nconst choice = apiResponse.choices[0];\nlet reply = '';\n\nif (choice.message && choice.message.content) {\n  reply = choice.message.content;\n} else if (choice.text) {\n  reply = choice.text;\n} else {\n  reply = '抱歉，我暂时无法回答这个问题。';\n}\n\n// 清理回复内容\nreply = reply.trim();\n\nreturn {\n  json: {\n    ok: true,\n    reply: reply,\n    clientId: originalData.clientId,\n    sessionId: originalData.clientId,\n    model: originalData.model,\n    timestamp: Date.now(),\n    usage: apiResponse.usage,\n    originalResponse: apiResponse\n  }\n};"
+      },
+      "id": "process-response-node",
+      "name": "Process Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        800,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "id": "respond-webhook-node",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        1000,
+        0
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Process Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process Input": {
+      "main": [
+        [
+          {
+            "node": "Call DeepSeek API",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Merge Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call DeepSeek API": {
+      "main": [
+        [
+          {
+            "node": "Merge Data",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge Data": {
+      "main": [
+        [
+          {
+            "node": "Process Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process Response": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "48641e82-d4df-4cc6-b578-539c4aafb8f1",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "2e575e59c64a4129468e478557209bff3c10de04585a2efd16588cdee01e2e5e"
+  },
+  "id": "L98C0VnZzc6lnMdQ",
+  "tags": []
+}

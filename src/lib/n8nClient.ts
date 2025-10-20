@@ -20,7 +20,9 @@ export interface N8nChatRequest {
 }
 
 export interface N8nChatResponse {
-  reply: string;
+  output: string;
+  // 兼容旧字段：别名（可选）
+  reply?: string;
   // 可选：由 n8n 端返回的富信息
   data?: Record<string, unknown>;
 }
@@ -76,28 +78,80 @@ export async function sendToN8n(payload: N8nChatRequest, signal?: AbortSignal): 
   const url = resolveWebhookUrl();
   console.info('[n8n] using webhook url:', url);
 
-  // 将对话上下文转换为 n8n 所需的请求体：{ message }
+  // 验证输入数据
   const msgs = Array.isArray(payload?.messages) ? payload.messages : [];
-  const userMsgs = msgs.filter(m => m.role === 'user');
-  const latestContent =
-    userMsgs.length > 0
-      ? userMsgs[userMsgs.length - 1]?.content ?? ''
-      : msgs.length > 0
-        ? msgs[msgs.length - 1]?.content ?? ''
-        : '';
-
-  const message = (latestContent ?? '').trim();
-  if (!message) {
-    throw new Error('请输入内容后再发送');
+  if (msgs.length === 0) {
+    throw new Error('消息列表不能为空');
   }
 
-  const body = { message };
+  // 构建请求体，直接发送完整的对话上下文
+  const body: any = {
+    clientId: payload.clientId,
+    messages: msgs
+  };
 
-  const data = await fetchJson(url, body, signal);
-  // 工作流约定返回 { reply }, 若失败路径返回 { message: "Error in workflow" }
-  if (data && typeof data.reply === 'string') {
-    return { reply: data.reply, data };
+  // 添加可选参数
+  const meta = (payload as any)?.meta || {};
+  if (typeof meta.model === 'string') body.model = meta.model;
+  if (typeof meta.temperature === 'number') body.temperature = meta.temperature;
+  if (typeof meta.system === 'string') body.system = meta.system;
+
+  console.info('[n8n] sending request:', { url, body });
+
+  try {
+    const data = await fetchJson(url, body, signal);
+    console.info('[n8n] received response:', data);
+
+    // 检查响应状态 - 兼容不同的响应格式
+    if (data.ok === false) {
+      const errorMsg = data.error || '工作流处理失败';
+      throw new Error(`n8n 工作流错误: ${errorMsg}`);
+    }
+
+    // 提取回复内容 - 支持多种响应格式（优先 output）
+    let output = '';
+    if (typeof data?.output === 'string') {
+      output = data.output;
+    } else if (typeof data?.reply === 'string') {
+      output = data.reply;
+    } else if (typeof data?.content === 'string') {
+      output = data.content;
+    } else if (typeof data?.text === 'string') {
+      output = data.text;
+    } else if (typeof data === 'string') {
+      output = data;
+    }
+
+    if (typeof output !== 'string' || !output.trim()) {
+      throw new Error('工作流未返回有效的回复内容');
+    }
+
+    return {
+      output: output.trim(),
+      // 兼容旧字段：同步同一内容
+      reply: output.trim(),
+      data: {
+        sessionId: data.sessionId,
+        model: data.model,
+        timestamp: data.timestamp
+      }
+    };
+  } catch (error: any) {
+    console.error('[n8n] request failed:', error);
+    
+    // 重新抛出更友好的错误信息
+    if (error.name === 'AbortError') {
+      throw new Error('请求已取消');
+    } else if (error.status === 500) {
+      throw new Error('服务器内部错误，请稍后重试');
+    } else if (error.status === 404) {
+      throw new Error('工作流地址不存在，请检查配置');
+    } else if (error.status === 401) {
+      throw new Error('认证失败，请检查API密钥');
+    } else if (error.status === 429) {
+      throw new Error('请求过于频繁，请稍后重试');
+    } else {
+      throw new Error(error.message || '网络请求失败');
+    }
   }
-  const serverMsg = typeof data?.message === 'string' ? data.message : '';
-  throw new Error(serverMsg || '工作流未返回有效的 reply');
 }

@@ -35,11 +35,61 @@ npm run dev
 - 响应式：基于 CSS grid 与简单媒体查询
 - 无后端：互动操作（点赞/收藏/评论输入）仅前端演示，不持久化
 
+## AI 对话功能
+
+项目集成了基于 n8n 工作流的 AI 对话功能：
+
+### 功能特性
+- **智能对话**：基于 DeepSeek API 的诗词鉴赏助手
+- **上下文记忆**：支持多轮对话，保持对话历史
+- **错误处理**：完善的错误处理和超时机制
+- **响应式设计**：适配移动端和桌面端
+
+### 技术实现
+- **前端**：Vue 3 + TypeScript 实现的聊天组件
+- **后端**：n8n 工作流处理 AI API 调用
+- **API**：DeepSeek Chat API 提供 AI 能力
+
+### 配置说明
+1. **n8n 工作流**：导入 `workflows/AI Chat Backend (Final).json` 到你的 n8n 实例
+2. **API 密钥配置**：在 n8n 中配置 DeepSeek API 凭证
+   - 凭证名称：DeepSeek account
+   - API Key：你的 DeepSeek API 密钥
+3. **前端配置**：在 `src/components/ChatWidget.vue` 中修改 webhook URL
+
+### 问题修复说明
+**原问题**：n8n 工作流与前端 AI 对话连接不上
+**根本原因**：
+1. 原工作流使用了 LangChain Agent 模式，但前端发送的是简单消息格式
+2. 缺少数据预处理和响应处理节点
+3. 工作流节点连接配置不正确
+
+**修复方案**：
+1. 创建了最终版工作流 `AI Chat Backend (Final).json`，使用 Merge 节点合并数据流
+2. 解决了 Process Response 节点输入数据不完整的问题
+3. 添加了完整的错误处理和调试信息
+4. 确保数据在节点间正确传递
+
+### 工作流节点说明（最终版）
+- **Webhook**：接收前端 POST 请求
+- **Process Input**：JavaScript 代码节点，将前端消息转换为 DeepSeek API 格式
+- **Call DeepSeek API**：HTTP Request 节点，直接调用 DeepSeek Chat API
+- **Merge Data**：合并节点，将原始数据和API响应合并
+- **Process Response**：JavaScript 代码节点，处理合并后的数据，返回正确格式
+- **Respond to Webhook**：返回 JSON 格式的响应给前端
+
+### 测试方法
+1. 导入最终版工作流到 n8n
+2. 确保 DeepSeek API 密钥配置正确
+3. 运行测试脚本：`node test-final-workflow.js`
+4. 或在浏览器控制台中运行测试代码
+
 ## 后续扩展建议
 - 接入真实后端与鉴权（JWT）
 - 丰富数据维度与分页/懒加载
 - 引入 UI 库（如 Element Plus）增强筛选与表格
 - 添加错误边界与性能监控
+- 支持更多 AI 模型和自定义提示词
 
 ## Vercel 部署指引
 - 构建命令（Build Command）：`npm run build`

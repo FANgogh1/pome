@@ -1,0 +1,144 @@
+{
+  "name": "AI Chat Backend (Fixed)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "ai-chat",
+        "responseMode": "responseNode",
+        "options": {
+          "binaryData": false
+        }
+      },
+      "id": "05bd7094-ad01-4481-9c75-9f4cc3494e3c",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "webhookId": "7c2b1d70-f971-49a6-8be5-a2dd8b52b0b6"
+    },
+    {
+      "parameters": {
+        "jsCode": "// 处理前端发送的数据\nconst inputData = $input.all();\nconst webhookData = inputData[0].json;\n\n// 提取消息内容\nconst messages = webhookData.messages || [];\nconst clientId = webhookData.clientId || 'default';\nconst meta = webhookData.meta || {};\n\n// 获取最后一条用户消息\nconst lastUserMessage = messages.filter(msg => msg.role === 'user').pop();\nconst userInput = lastUserMessage ? lastUserMessage.content : '你好';\n\n// 构建系统提示词\nlet systemPrompt = '你是一个专业的诗词鉴赏助手，擅长解释古诗词的含义、背景和艺术特色。请用简洁易懂的语言回答用户的问题。';\nif (meta.system) {\n  systemPrompt = meta.system;\n}\n\n// 构建完整的对话上下文\nlet fullContext = systemPrompt + '\\n\\n';\nfor (const msg of messages) {\n  if (msg.role === 'user') {\n    fullContext += '用户: ' + msg.content + '\\n';\n  } else if (msg.role === 'assistant') {\n    fullContext += '助手: ' + msg.content + '\\n';\n  }\n}\nfullContext += '请回答用户的问题: ' + userInput;\n\nreturn {\n  json: {\n    input: fullContext,\n    clientId: clientId,\n    originalMessages: messages,\n    userInput: userInput,\n    systemPrompt: systemPrompt,\n    model: meta.model || 'deepseek-chat',\n    temperature: meta.temperature || 0.7\n  }\n};"
+      },
+      "id": "process-input-node",
+      "name": "Process Input",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        200,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "options": {
+          "temperature": "={{ $json.temperature }}"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatDeepSeek",
+      "typeVersion": 1,
+      "position": [
+        400,
+        0
+      ],
+      "id": "52c5da3a-861f-43b9-9561-2e9455a64137",
+      "name": "DeepSeek Chat Model",
+      "credentials": {
+        "deepSeekApi": {
+          "id": "qsh9oJN5ao1DYNQa",
+          "name": "DeepSeek account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// 处理AI响应\nconst inputData = $input.all();\nconst aiResponse = inputData[0].json;\n\n// 从Process Input节点获取原始数据（通过合并输入）\nlet originalData = {};\nif (inputData.length > 1) {\n  originalData = inputData[1].json;\n} else {\n  // 如果没有第二个输入，尝试从AI响应中提取\n  originalData = {\n    clientId: 'default',\n    model: 'deepseek-chat'\n  };\n}\n\n// 提取AI回复内容\nlet reply = '';\nif (typeof aiResponse === 'string') {\n  reply = aiResponse;\n} else if (aiResponse && aiResponse.content) {\n  reply = aiResponse.content;\n} else if (aiResponse && aiResponse.text) {\n  reply = aiResponse.text;\n} else if (aiResponse && aiResponse.message) {\n  reply = aiResponse.message;\n} else {\n  reply = '抱歉，我暂时无法回答这个问题。';\n}\n\n// 清理回复内容\nreply = reply.trim();\nif (reply.startsWith('助手: ')) {\n  reply = reply.substring(3);\n}\nif (reply.startsWith('用户: ')) {\n  reply = reply.substring(3);\n}\n\nreturn {\n  json: {\n    ok: true,\n    reply: reply,\n    clientId: originalData.clientId || 'default',\n    sessionId: originalData.clientId || 'default',\n    model: originalData.model || 'deepseek-chat',\n    timestamp: Date.now(),\n    originalResponse: aiResponse\n  }\n};"
+      },
+      "id": "process-response-node",
+      "name": "Process Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        600,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "id": "d1724444-9e4e-444c-bf63-d4cf98b3a34e",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        800,
+        0
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Process Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process Input": {
+      "main": [
+        [
+          {
+            "node": "DeepSeek Chat Model",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "DeepSeek Chat Model": {
+      "main": [
+        [
+          {
+            "node": "Process Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process Response": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "48641e82-d4df-4cc6-b578-539c4aafb8f1",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "2e575e59c64a4129468e478557209bff3c10de04585a2efd16588cdee01e2e5e"
+  },
+  "id": "L98C0VnZzc6lnMdQ",
+  "tags": []
+}
